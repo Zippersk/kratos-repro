@@ -1,0 +1,44 @@
+version: "3.7"
+
+services:
+  caddy:
+    image: caddy:latest
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile
+    ports:
+      - "8080:80"
+
+  kratos-migrate:
+    image: oryd/kratos:v0.5.5-alpha.1-sqlite
+    environment:
+      - DSN=sqlite:///var/lib/sqlite/db.sqlite?_fk=true&mode=rwc
+    volumes:
+      - ./kratos:/etc/config/kratos
+      - kratos-sqlite:/var/lib/sqlite
+    command: -c /etc/config/kratos/kratos.yml migrate sql -e --yes
+    restart: on-failure
+
+  kratos:
+    image: oryd/kratos:v0.5.5-alpha.1-sqlite
+    depends_on:
+      - kratos-migrate
+    restart: unless-stopped
+    environment:
+      - DSN=sqlite:///var/lib/sqlite/db.sqlite?_fk=true
+      - LOG_LEVEL=trace
+    command: serve -c /etc/config/kratos/kratos.yml --dev
+    volumes:
+      - ./kratos:/etc/config/kratos
+      - kratos-sqlite:/var/lib/sqlite
+  kratos-selfservice-ui-node:
+    image: oryd/kratos-selfservice-ui-node:v0.5.0-alpha.1
+    environment:
+      - KRATOS_PUBLIC_URL=http://kratos:4433/
+      - KRATOS_ADMIN_URL=http://kratos:4434/
+      - PORT=4455
+      - SECURITY_MODE=
+      - KRATOS_BROWSER_URL=http://kratos.localhost:8080/
+    restart: on-failure
+
+volumes:
+  kratos-sqlite:

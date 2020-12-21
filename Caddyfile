@@ -1,0 +1,12 @@
+{
+	auto_https off
+}
+
+
+kratos.*:80 {
+  reverse_proxy kratos:4433
+}
+
+auth.*:80 {
+  reverse_proxy kratos-selfservice-ui-node:4455
+}
